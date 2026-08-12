@@ -13,13 +13,14 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { TaskDetailDrawer } from "@/components/task-detail-drawer";
 import { Badge, Button, Input, PageHeader, Select, Skeleton, priorityTone } from "@/components/ui";
 import { Task, endpoints } from "@/lib/api";
 import { prettyStatus } from "@/lib/utils";
 import { tasksQuery } from "@/lib/query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useOptimistic, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 const COLUMNS = ["backlog", "todo", "in_progress", "review", "blocked", "completed"] as const;
@@ -34,6 +35,8 @@ export default function TasksPage() {
 
 function TasksInner() {
   const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const qc = useQueryClient();
   const [mine, setMine] = useState(false);
   const [archived, setArchived] = useState(false);
@@ -44,6 +47,16 @@ function TasksInner() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<Task | null>(null);
   const [, startTransition] = useTransition();
+  const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const openTaskId = params.get("task");
+
+  function setTaskParam(id: string | null) {
+    const sp = new URLSearchParams(params.toString());
+    if (id) sp.set("task", id);
+    else sp.delete("task");
+    const qs = sp.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   const tasks = useQuery(tasksQuery(mine, archived));
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => endpoints.projects() });
@@ -201,7 +214,16 @@ function TasksInner() {
             <p className="text-[14px] text-muted">No archived tasks.</p>
           ) : (
             optimisticTasks.map((t) => (
-              <div key={t.id} className="panel flex items-center justify-between gap-3 p-3">
+              <button
+                key={t.id}
+                type="button"
+                className="panel flex w-full items-center justify-between gap-3 p-3 text-left"
+                onClick={() => setTaskParam(t.id)}
+                ref={(el) => {
+                  if (el) cardRefs.current.set(t.id, el);
+                  else cardRefs.current.delete(t.id);
+                }}
+              >
                 <div>
                   <p className="text-[14px] font-medium">{t.title}</p>
                   <p className="text-[12px] text-muted">
@@ -209,7 +231,7 @@ function TasksInner() {
                   </p>
                 </div>
                 <Badge tone="warn">Archived</Badge>
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -223,7 +245,18 @@ function TasksInner() {
         >
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
             {grouped.map((g) => (
-              <TaskColumn key={g.col} col={g.col} items={g.items} onStatus={moveTask} onArchive={setArchiveTarget} />
+              <TaskColumn
+                key={g.col}
+                col={g.col}
+                items={g.items}
+                onStatus={moveTask}
+                onArchive={setArchiveTarget}
+                onOpen={(id) => setTaskParam(id)}
+                registerCard={(id, el) => {
+                  if (el) cardRefs.current.set(id, el);
+                  else cardRefs.current.delete(id);
+                }}
+              />
             ))}
           </div>
           <DragOverlay>
@@ -235,6 +268,14 @@ function TasksInner() {
           </DragOverlay>
         </DndContext>
       )}
+
+      {openTaskId ? (
+        <TaskDetailDrawer
+          taskId={openTaskId}
+          onClose={() => setTaskParam(null)}
+          returnFocusTo={cardRefs.current.get(openTaskId) || null}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={Boolean(archiveTarget)}
@@ -254,11 +295,15 @@ function TaskColumn({
   items,
   onStatus,
   onArchive,
+  onOpen,
+  registerCard,
 }: {
   col: string;
   items: Task[];
   onStatus: (id: string, status: string) => void;
   onArchive: (task: Task) => void;
+  onOpen: (id: string) => void;
+  registerCard: (id: string, el: HTMLElement | null) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col });
 
@@ -274,7 +319,14 @@ function TaskColumn({
       <SortableContext items={items.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="scroll-thin max-h-[70vh] space-y-2 overflow-y-auto">
           {items.map((t) => (
-            <SortableTask key={t.id} task={t} onStatus={onStatus} onArchive={onArchive} />
+            <SortableTask
+              key={t.id}
+              task={t}
+              onStatus={onStatus}
+              onArchive={onArchive}
+              onOpen={onOpen}
+              registerCard={registerCard}
+            />
           ))}
         </div>
       </SortableContext>
@@ -286,20 +338,43 @@ function SortableTask({
   task,
   onStatus,
   onArchive,
+  onOpen,
+  registerCard,
 }: {
   task: Task;
   onStatus: (id: string, status: string) => void;
   onArchive: (task: Task) => void;
+  onOpen: (id: string) => void;
+  registerCard: (id: string, el: HTMLElement | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const dragged = useRef(false);
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
   };
 
+  if (isDragging) dragged.current = true;
+
   return (
-    <div ref={setNodeRef} style={style} className="panel lift p-3" {...attributes} {...listeners}>
+    <div
+      ref={(el) => {
+        setNodeRef(el);
+        registerCard(task.id, el);
+      }}
+      style={style}
+      className="panel lift cursor-pointer p-3"
+      {...attributes}
+      {...listeners}
+      onClick={() => {
+        if (dragged.current) {
+          dragged.current = false;
+          return;
+        }
+        onOpen(task.id);
+      }}
+    >
       <p className="text-[13px] font-semibold">{task.title}</p>
       <p className="mt-1 text-[11px] text-muted">
         {task.project_name || "No project"} · {task.assignee_name || "Unassigned"}
@@ -311,6 +386,7 @@ function SortableTask({
         className="mt-2 w-full rounded-lg border border-line bg-bg px-2 py-1 text-xs"
         value={task.status}
         onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         onChange={(e) => onStatus(task.id, e.target.value)}
       >
         {COLUMNS.map((s) => (
