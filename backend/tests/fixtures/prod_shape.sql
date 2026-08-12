@@ -18,7 +18,7 @@ VALUES (
 
 INSERT INTO users (
   id, email, hashed_password, first_name, last_name, display_name,
-  role_key, is_active, is_superadmin, email_verified, org_id, created_at, updated_at
+  role_key, is_active, is_superadmin, email_verified, totp_enabled, org_id, created_at, updated_at
 ) VALUES
 (
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
@@ -31,6 +31,7 @@ INSERT INTO users (
   TRUE,
   FALSE,
   TRUE,
+  FALSE,
   '3c8a1e90-7b2f-4d11-9c4a-0f6b2a8d1e55',
   NOW(),
   NOW()
@@ -46,6 +47,7 @@ INSERT INTO users (
   TRUE,
   FALSE,
   TRUE,
+  FALSE,
   '3c8a1e90-7b2f-4d11-9c4a-0f6b2a8d1e55',
   NOW(),
   NOW()
@@ -61,6 +63,7 @@ INSERT INTO users (
   TRUE,
   FALSE,
   TRUE,
+  FALSE,
   '3c8a1e90-7b2f-4d11-9c4a-0f6b2a8d1e55',
   NOW(),
   NOW()
