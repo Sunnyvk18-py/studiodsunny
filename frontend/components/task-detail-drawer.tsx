@@ -7,7 +7,7 @@ import { prettyStatus } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type MutableRefObject } from "react";
 import { toast } from "sonner";
 
 const STATUSES = ["backlog", "todo", "in_progress", "review", "blocked", "completed"] as const;
@@ -19,11 +19,11 @@ const FOCUSABLE =
 export function TaskDetailDrawer({
   taskId,
   onClose,
-  returnFocusTo,
+  returnFocusRef,
 }: {
   taskId: string;
   onClose: () => void;
-  returnFocusTo?: HTMLElement | null;
+  returnFocusRef?: MutableRefObject<HTMLElement | null>;
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -66,7 +66,7 @@ export function TaskDetailDrawer({
   useEffect(() => {
     const panel = panelRef.current;
     if (!panel) return;
-    const previouslyFocused = returnFocusTo || (document.activeElement as HTMLElement | null);
+    const previouslyFocused = returnFocusRef?.current || (document.activeElement as HTMLElement | null);
     const nodes = () =>
       Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute("disabled"));
     nodes()[0]?.focus();
@@ -100,9 +100,8 @@ export function TaskDetailDrawer({
       previouslyFocused?.focus?.();
       skipBlurSave.current = false;
     };
-    // discardDraftsAndClose closes over latest task.data / onClose
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId, onClose, returnFocusTo, task.data]);
+  }, [taskId, onClose, returnFocusRef, task.data]);
 
   const patchTask = useMutation({
     mutationFn: (data: Record<string, unknown>) => endpoints.updateTask(taskId, data),
