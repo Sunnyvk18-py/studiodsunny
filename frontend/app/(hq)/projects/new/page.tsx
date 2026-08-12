@@ -3,6 +3,7 @@
 import { Button, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { PROJECT_TYPES, endpoints } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -96,9 +97,9 @@ export default function NewProjectPage() {
             </Select>
             <p className="mt-2 text-xs text-muted">
               Need someone new?{" "}
-              <a href="/clients/new" className="text-accent hover:underline">
+              <Link href="/clients/new" className="text-accent hover:underline">
                 Add a client first
-              </a>
+              </Link>
               .
             </p>
           </Field>

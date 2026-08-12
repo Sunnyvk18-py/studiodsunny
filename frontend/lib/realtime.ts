@@ -22,8 +22,8 @@ export type ChatLiveMessage = {
 type Handler = (event: RealtimeEvent) => void;
 
 let socket: WebSocket | null = null;
-let handlers = new Set<Handler>();
-let wanted = new Set<string>();
+const handlers = new Set<Handler>();
+const wanted = new Set<string>();
 let pingTimer: number | null = null;
 
 function wsUrl() {
