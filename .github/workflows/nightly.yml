@@ -23,7 +23,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install -r requirements.txt
-      - name: Schemathesis deep (--fuzz-deep)
+      - name: Schemathesis (default + deep)
         run: .venv/bin/python -m pytest -m fuzz --fuzz-deep -q --tb=line
         env:
           FUZZ_DEEP: "1"

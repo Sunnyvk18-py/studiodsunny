@@ -38,8 +38,9 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install -r requirements.txt
-      - name: Pytest (excl. migrations + deep fuzz)
-        run: .venv/bin/python -m pytest -q -m "not migrations" --durations=15
+      - name: Pytest (merge path; excl. migrations/fuzz)
+        # Fuzz stays on nightly — push CI must stay well under ~5 minutes.
+        run: .venv/bin/python -m pytest -q -m "not migrations and not fuzz" --durations=15
       - name: Migration suite must PASS (not skip)
         run: |
           set -euo pipefail
