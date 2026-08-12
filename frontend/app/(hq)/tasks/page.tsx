@@ -20,7 +20,7 @@ import { prettyStatus } from "@/lib/utils";
 import { tasksQuery } from "@/lib/query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { Suspense, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 const COLUMNS = ["backlog", "todo", "in_progress", "review", "blocked", "completed"] as const;
@@ -48,9 +48,11 @@ function TasksInner() {
   const [archiveTarget, setArchiveTarget] = useState<Task | null>(null);
   const [, startTransition] = useTransition();
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const openTaskId = params.get("task");
 
   function setTaskParam(id: string | null) {
+    if (id) returnFocusRef.current = cardRefs.current.get(id) || null;
     const sp = new URLSearchParams(params.toString());
     if (id) sp.set("task", id);
     else sp.delete("task");
@@ -273,7 +275,7 @@ function TasksInner() {
         <TaskDetailDrawer
           taskId={openTaskId}
           onClose={() => setTaskParam(null)}
-          returnFocusTo={cardRefs.current.get(openTaskId) || null}
+          returnFocusRef={returnFocusRef}
         />
       ) : null}
 
@@ -355,7 +357,9 @@ function SortableTask({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  if (isDragging) dragged.current = true;
+  useEffect(() => {
+    if (isDragging) dragged.current = true;
+  }, [isDragging]);
 
   return (
     <div
