@@ -89,14 +89,17 @@ def list_roles(user: CurrentUser):
 
 
 @router.get("", response_model=list[EmployeeOut])
-def list_employees(db: DbDep, user: CurrentUser, q: str | None = None):
+def list_employees(db: DbDep, user: CurrentUser, q: str | None = None, archived: bool = False):
     stmt = (
         select(Employee)
         .options(selectinload(Employee.user), selectinload(Employee.department))
         .join(User, Employee.user_id == User.id)
-        .where(Employee.deleted_at.is_(None), User.deleted_at.is_(None))
         .order_by(User.display_name)
     )
+    if archived:
+        stmt = stmt.where(Employee.deleted_at.is_not(None))
+    else:
+        stmt = stmt.where(Employee.deleted_at.is_(None), User.deleted_at.is_(None))
     if q:
         stmt = stmt.where(func.lower(User.display_name).like(f"%{q.lower()}%"))
     return [hydrate(db, e, user) for e in db.scalars(stmt).all()]
@@ -109,7 +112,7 @@ def get_employee(employee_id: UUID, db: DbDep, user: CurrentUser):
         .options(selectinload(Employee.user), selectinload(Employee.department))
         .where(Employee.id == employee_id)
     )
-    if not emp or emp.deleted_at:
+    if not emp:
         raise HTTPException(404, "Employee not found")
     return hydrate(db, emp, user)
 

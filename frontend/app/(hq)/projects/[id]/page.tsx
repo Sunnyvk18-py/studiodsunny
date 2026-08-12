@@ -1,30 +1,108 @@
 "use client";
 
-import { Avatar, Badge, Button, Input, PageHeader, Select, Skeleton, healthTone, priorityTone } from "@/components/ui";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Avatar, Badge, Button, Input, PageHeader, Select, Skeleton, Textarea, healthTone, priorityTone } from "@/components/ui";
 import { endpoints, Task } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { prettyStatus } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const TABS = ["Overview", "Tasks", "Docs", "Files", "Timeline", "Team", "Activity"] as const;
+const PROJECT_STATUSES = [
+  "planning",
+  "design",
+  "development",
+  "testing",
+  "client_review",
+  "launching",
+  "maintenance",
+  "completed",
+  "paused",
+];
 
 export default function ProjectWorkspace() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const router = useRouter();
+  const qc = useQueryClient();
+  const { can } = useAuth();
+  const canWrite = can("projects:write");
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
+  const [editing, setEditing] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    description: "",
+    status: "planning",
+    start_date: "",
+    target_completion_date: "",
+  });
   const project = useQuery({ queryKey: ["project", id], queryFn: () => endpoints.project(id) });
   const tasks = useQuery({ queryKey: ["tasks", id], queryFn: () => endpoints.tasks({ project_id: id }) });
   const activity = useQuery({ queryKey: ["activity", id], queryFn: () => endpoints.activity(id) });
+
+  useEffect(() => {
+    if (!project.data) return;
+    setForm({
+      name: project.data.name,
+      description: project.data.description || "",
+      status: project.data.status,
+      start_date: project.data.start_date || "",
+      target_completion_date: project.data.target_completion_date || "",
+    });
+  }, [project.data]);
+
+  const save = useMutation({
+    mutationFn: () =>
+      endpoints.updateProject(id, {
+        name: form.name,
+        description: form.description || null,
+        status: form.status,
+        start_date: form.start_date || null,
+        target_completion_date: form.target_completion_date || null,
+      }),
+    onSuccess: (updated) => {
+      qc.setQueryData(["project", id], updated);
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      setEditing(false);
+      toast.success("Project updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const archive = useMutation({
+    mutationFn: () => endpoints.archiveProject(id),
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ["projects"] });
+      const previous = qc.getQueriesData({ queryKey: ["projects"] });
+      qc.setQueriesData({ queryKey: ["projects"] }, (old: unknown) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((p: { id: string }) => p.id !== id);
+      });
+      return { previous };
+    },
+    onError: (e: Error, _v, ctx) => {
+      ctx?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error(e.message);
+    },
+    onSuccess: () => {
+      toast.success("Project archived");
+      router.push("/projects");
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["projects"] }),
+  });
 
   if (project.isLoading || !project.data) {
     return <Skeleton className="h-64" />;
   }
 
   const p = project.data;
+  const archived = Boolean(p.archived);
 
   return (
     <div className="mx-auto max-w-[1200px]">
@@ -34,11 +112,77 @@ export default function ProjectWorkspace() {
         description={p.description || p.project_type}
         actions={
           <>
+            {archived ? <Badge tone="warn">Archived</Badge> : null}
             <Badge tone={healthTone(p.health)}>{prettyStatus(p.health)}</Badge>
             <Badge>{prettyStatus(p.status)}</Badge>
+            {!archived && canWrite ? (
+              <>
+                <Button variant="outline" onClick={() => setEditing((v) => !v)}>
+                  {editing ? "Cancel edit" : "Edit"}
+                </Button>
+                <Button variant="outline" onClick={() => setConfirmArchive(true)}>
+                  Archive
+                </Button>
+              </>
+            ) : null}
           </>
         }
       />
+
+      {editing && !archived ? (
+        <form
+          className="panel mb-6 space-y-4 p-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate();
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-muted">Name</span>
+              <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-medium text-muted">Description</span>
+              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-muted">Status</span>
+              <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                {PROJECT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {prettyStatus(s)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-muted">Start date</span>
+              <Input
+                type="date"
+                value={form.start_date}
+                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-muted">Target completion</span>
+              <Input
+                type="date"
+                value={form.target_completion_date}
+                onChange={(e) => setForm({ ...form, target_completion_date: e.target.value })}
+              />
+            </label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={save.isPending}>
+              Save changes
+            </Button>
+          </div>
+        </form>
+      ) : null}
 
       <div className="mb-6 flex gap-1 overflow-x-auto border-b border-line">
         {TABS.map((t) => (
@@ -164,6 +308,16 @@ export default function ProjectWorkspace() {
           </ul>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmArchive}
+        title={`Archive ${p.name}?`}
+        body="It will leave the default project list. You can find it again with the Archived filter."
+        confirmLabel="Archive"
+        loading={archive.isPending}
+        onCancel={() => setConfirmArchive(false)}
+        onConfirm={() => archive.mutate()}
+      />
     </div>
   );
 }

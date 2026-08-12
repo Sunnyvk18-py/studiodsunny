@@ -10,7 +10,11 @@ import { useState } from "react";
 
 export default function ClientsPage() {
   const [q, setQ] = useState("");
-  const query = useQuery({ queryKey: ["clients", q], queryFn: () => endpoints.clients(q || undefined) });
+  const [archived, setArchived] = useState(false);
+  const query = useQuery({
+    queryKey: ["clients", q, archived],
+    queryFn: () => endpoints.clients({ q: q || undefined, archived }),
+  });
 
   return (
     <div className="mx-auto max-w-[1200px]">
@@ -19,9 +23,16 @@ export default function ClientsPage() {
         title="Clients"
         description="The companies Studio Sunny is building for."
         actions={
-          <Link href="/clients/new">
-            <Button>Add client</Button>
-          </Link>
+          <>
+            <Button variant={archived ? "primary" : "outline"} onClick={() => setArchived((v) => !v)}>
+              {archived ? "Showing archived" : "Archived"}
+            </Button>
+            {!archived ? (
+              <Link href="/clients/new">
+                <Button>Add client</Button>
+              </Link>
+            ) : null}
+          </>
         }
       />
       <input
@@ -38,12 +49,18 @@ export default function ClientsPage() {
         </div>
       ) : !query.data?.length ? (
         <EmptyState
-          title="No clients yet"
-          body="Add Muttonly, Patel Gems, or a new account to start the delivery workflow."
+          title={archived ? "No archived clients" : "No clients yet"}
+          body={
+            archived
+              ? "Archived accounts will show up here."
+              : "Add Muttonly, Patel Gems, or a new account to start the delivery workflow."
+          }
           action={
-            <Link href="/clients/new">
-              <Button>Add client</Button>
-            </Link>
+            !archived ? (
+              <Link href="/clients/new">
+                <Button>Add client</Button>
+              </Link>
+            ) : undefined
           }
         />
       ) : (
@@ -55,7 +72,7 @@ export default function ClientsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold">{c.business_name}</p>
-                    <Badge tone="ok">{prettyStatus(c.status)}</Badge>
+                    <Badge tone={archived ? "warn" : "ok"}>{archived ? "Archived" : prettyStatus(c.status)}</Badge>
                   </div>
                   <p className="mt-0.5 text-[12px] text-muted">
                     {c.industry || "—"} · {c.location || "—"}

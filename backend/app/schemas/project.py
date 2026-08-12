@@ -134,6 +134,7 @@ class ProjectOut(ORMModel):
     team_count: int = 0
     open_tasks: int = 0
     blocked_tasks: int = 0
+    archived: bool = False
 
 
 class ProjectDetail(ProjectOut):

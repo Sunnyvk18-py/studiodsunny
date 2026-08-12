@@ -83,3 +83,4 @@ class TaskOut(ORMModel):
     project_name: str | None = None
     assignee_name: str | None = None
     reviewer_name: str | None = None
+    archived: bool = False

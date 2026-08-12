@@ -29,6 +29,7 @@ def _task_out(db, t: Task) -> TaskOut:
     data.project_name = project.name if project else None
     data.assignee_name = assignee.display_name if assignee else None
     data.reviewer_name = reviewer.display_name if reviewer else None
+    data.archived = t.deleted_at is not None
     return data
 
 
@@ -56,6 +57,7 @@ def list_tasks(
     assignee_id: UUID | None = None,
     status_filter: str | None = Query(None, alias="status"),
     mine: bool = False,
+    archived: bool = False,
     limit: int = LimitQuery(50),
     before: datetime | None = Query(
         None,
@@ -64,7 +66,11 @@ def list_tasks(
 ):
     """Cursor-paginated task list. Hard server cap = HARD_MAX (not offset pages)."""
     limit = clamp_limit(limit)
-    stmt = select(Task).where(Task.deleted_at.is_(None))
+    stmt = select(Task)
+    if archived:
+        stmt = stmt.where(Task.deleted_at.is_not(None))
+    else:
+        stmt = stmt.where(Task.deleted_at.is_(None))
     if project_id:
         stmt = stmt.where(Task.project_id == project_id)
     if assignee_id:
@@ -90,7 +96,7 @@ def list_tasks(
 @router.get("/{task_id}", response_model=TaskOut)
 def get_task(task_id: UUID, db: DbDep, user: CurrentUser):
     t = db.get(Task, task_id)
-    if not t or t.deleted_at or not _can_see_task(db, user, t):
+    if not t or not _can_see_task(db, user, t):
         raise not_found("Task")
     return _task_out(db, t)
 

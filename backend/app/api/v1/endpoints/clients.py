@@ -27,6 +27,7 @@ def hydrate(db, c: Client, user) -> ClientOut:
     ) or 0
     out = ClientOut.model_validate(c)
     out.active_projects = active
+    out.archived = c.deleted_at is not None
     # Cash figures: founder only (PERMISSIONS.md)
     if is_founder(user):
         pending = db.scalar(
@@ -43,9 +44,19 @@ def hydrate(db, c: Client, user) -> ClientOut:
 
 
 @router.get("", response_model=list[ClientOut])
-def list_clients(db: DbDep, user: CurrentUser, q: str | None = None, status_filter: str | None = None):
+def list_clients(
+    db: DbDep,
+    user: CurrentUser,
+    q: str | None = None,
+    status_filter: str | None = None,
+    archived: bool = False,
+):
     require_founder_or_pm(user)
-    stmt = select(Client).where(Client.deleted_at.is_(None)).order_by(Client.business_name)
+    stmt = select(Client).order_by(Client.business_name)
+    if archived:
+        stmt = stmt.where(Client.deleted_at.is_not(None))
+    else:
+        stmt = stmt.where(Client.deleted_at.is_(None))
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(func.lower(Client.business_name).like(like))
@@ -59,7 +70,7 @@ def get_client(client_id: UUID, db: DbDep, user: CurrentUser):
     if not is_founder_or_pm(user):
         raise not_found("Client")
     c = db.get(Client, client_id)
-    if not c or c.deleted_at:
+    if not c:
         raise not_found("Client")
     return hydrate(db, c, user)
 

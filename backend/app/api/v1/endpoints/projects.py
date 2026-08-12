@@ -56,6 +56,7 @@ def _hydrate_list(db, p: Project) -> ProjectOut:
     out.team_count = team_count
     out.open_tasks = open_tasks
     out.blocked_tasks = blocked
+    out.archived = p.deleted_at is not None
     return out
 
 
@@ -67,8 +68,13 @@ def list_projects(
     status_filter: str | None = Query(None, alias="status"),
     health: str | None = None,
     client_id: UUID | None = None,
+    archived: bool = False,
 ):
-    stmt = select(Project).where(Project.deleted_at.is_(None)).order_by(Project.updated_at.desc())
+    stmt = select(Project).order_by(Project.updated_at.desc())
+    if archived:
+        stmt = stmt.where(Project.deleted_at.is_not(None))
+    else:
+        stmt = stmt.where(Project.deleted_at.is_(None))
     if q:
         stmt = stmt.where(func.lower(Project.name).like(f"%{q.lower()}%"))
     if status_filter:
@@ -90,7 +96,7 @@ def get_project(project_id: UUID, db: DbDep, user: CurrentUser):
         .options(selectinload(Project.members), selectinload(Project.milestones))
         .where(Project.id == project_id)
     )
-    if not p or p.deleted_at or not _can_see_project(db, user, p):
+    if not p or not _can_see_project(db, user, p):
         raise not_found("Project")
 
     base = _hydrate_list(db, p)
