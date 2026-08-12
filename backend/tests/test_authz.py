@@ -909,28 +909,32 @@ def test_search_isolation_nonce():
         )
         db.add(lead)
         # Task on a project Rahul is not on — attach to first project without him if possible
-        from app.models.project import Project, ProjectMember
+        from app.models.project import Project
         from app.models.user import User
 
-        rahul_u = db.scalar(select(User).where(User.email == DEVELOPER))
         sunny_id = db.scalar(select(User.id).where(User.email == FOUNDER))
-        member_pids = set(
-            db.scalars(select(ProjectMember.project_id).where(ProjectMember.user_id == rahul_u.id)).all()
+        # Dedicated empty project — never rely on "first project Rahul isn't on"
+        # (hostile seed may put designers on projects developers aren't).
+        isolated = Project(
+            name=f"Isolated {nonce}",
+            slug=f"isolated-{nonce.lower()}-{uuid.uuid4().hex[:6]}",
+            client_id=c.id,
+            status="active",
+            project_type="Website",
+            org_id=STUDIO_SUNNY_ORG_ID,
         )
-        foreign = db.scalar(
-            select(Project).where(Project.deleted_at.is_(None), Project.id.notin_(member_pids or {None}))
-        )
-        if foreign:
-            db.add(
-                Task(
-                    title=f"Secret {nonce} Task",
-                    project_id=foreign.id,
-                    status="todo",
-                    priority="low",
-                    org_id=STUDIO_SUNNY_ORG_ID,
-                    created_by_id=sunny_id,
-                )
+        db.add(isolated)
+        db.flush()
+        db.add(
+            Task(
+                title=f"Secret {nonce} Task",
+                project_id=isolated.id,
+                status="todo",
+                priority="low",
+                org_id=STUDIO_SUNNY_ORG_ID,
+                created_by_id=sunny_id,
             )
+        )
         db.add(
             Document(
                 title=f"Secret {nonce} Doc",
