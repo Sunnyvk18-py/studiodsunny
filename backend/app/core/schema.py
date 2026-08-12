@@ -24,10 +24,16 @@ def ensure_schema(engine) -> None:
             if not exists:
                 conn.execute(
                     text(
-                        "INSERT INTO organizations (id, name, slug, created_at, updated_at) "
-                        "VALUES (:id, :name, :slug, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+                        "INSERT INTO organizations (id, name, slug, timezone, currency, created_at, updated_at) "
+                        "VALUES (:id, :name, :slug, :tz, :cur, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
                     ),
-                    {"id": org_id, "name": "Studio Sunny", "slug": "studio-sunny"},
+                    {
+                        "id": org_id,
+                        "name": "Studio Sunny",
+                        "slug": "studio-sunny",
+                        "tz": "Asia/Kolkata",
+                        "cur": "INR",
+                    },
                 )
             org_cols = {c["name"] for c in insp.get_columns("organizations")}
             for col, ddl in [
