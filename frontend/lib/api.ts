@@ -216,6 +216,17 @@ export const endpoints = {
   updateTask: (id: string, data: unknown) =>
     api<Task>(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   archiveTask: (id: string) => api<void>(`/tasks/${id}/archive`, { method: "POST" }),
+  task: (id: string) => api<Task>(`/tasks/${id}`),
+  taskComments: (id: string) => api<TaskComment[]>(`/tasks/${id}/comments`),
+  addTaskComment: (id: string, body: string) =>
+    api<TaskComment>(`/tasks/${id}/comments`, { method: "POST", body: JSON.stringify({ body }) }),
+  updateTaskComment: (taskId: string, commentId: string, body: string) =>
+    api<TaskComment>(`/tasks/${taskId}/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ body }),
+    }),
+  deleteTaskComment: (taskId: string, commentId: string) =>
+    api<void>(`/tasks/${taskId}/comments/${commentId}`, { method: "DELETE" }),
   employees: (opts?: string | { q?: string; archived?: boolean }) => {
     const params = typeof opts === "string" ? { q: opts } : opts || {};
     const sp = new URLSearchParams();
@@ -446,6 +457,21 @@ export type Task = {
   assignee_name?: string | null;
   reviewer_name?: string | null;
   archived?: boolean;
+};
+
+export type TaskComment = {
+  id: string;
+  task_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+  author?: {
+    id: string;
+    display_name: string;
+    email: string;
+    role_key: string;
+    avatar_url?: string | null;
+  } | null;
 };
 
 export type AppNotification = {
