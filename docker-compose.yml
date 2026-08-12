@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: studio-sunny-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sunny
+      POSTGRES_PASSWORD: sunny_hq_dev
+      POSTGRES_DB: studio_sunny_hq
+    ports:
+      - "5432:5432"
+    volumes:
+      - sunny_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sunny -d studio_sunny_hq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: studio-sunny-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  # Optional: run with `docker compose --profile workers up`
+  worker:
+    profiles: ["workers"]
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+psycopg://sunny:sunny_hq_dev@postgres:5432/studio_sunny_hq
+    command: bash -lc "pip install -q -r requirements.txt && arq app.worker.WorkerSettings"
+    depends_on:
+      - redis
+      - postgres
+
+volumes:
+  sunny_pg_data:

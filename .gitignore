@@ -1,0 +1,46 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next
+frontend/.next/
+frontend/out/
+
+# python
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.mypy_cache/
+*.egg-info/
+.ruff_cache/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ide / os
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# logs / coverage
+*.log
+coverage/
+htmlcov/
+.coverage
+
+# uploads / local db
+backend/uploads/
+.uploads/
+*.db
+backend/studio_sunny_hq.db
+.cursor/
+debug-*.log

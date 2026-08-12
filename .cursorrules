@@ -1,0 +1,3 @@
+PERMISSIONS.md is the authorization specification.
+Never edit it to match the code. Only the human edits it.
+If code and spec disagree, the code is wrong.

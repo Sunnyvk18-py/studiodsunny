@@ -1,0 +1,16 @@
+{
+  "name": "studio-sunny",
+  "private": true,
+  "packageManager": "npm@10",
+  "scripts": {
+    "dev:web": "npm --prefix frontend run dev",
+    "build:web": "npm --prefix frontend run build",
+    "lint:web": "npm --prefix frontend run lint",
+    "test:api": "cd backend && .venv/Scripts/python.exe -m pytest -q",
+    "worker": "cd backend && .venv/Scripts/arq.exe app.worker.WorkerSettings",
+    "ci:local": "npm run lint:web && npm run test:api"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  }
+}
