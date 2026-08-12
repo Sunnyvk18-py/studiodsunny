@@ -46,7 +46,7 @@ export function DocEditor({
   onChange,
   placeholder = "Start writing…",
 }: Props) {
-  const ydoc = useMemo(() => new Y.Doc(), [docId]);
+  const ydoc = useMemo(() => new Y.Doc({ guid: docId }), [docId]);
   const awareness = useMemo(() => new Awareness(ydoc), [ydoc]);
   const provider = useMemo(() => ({ awareness }), [awareness]);
   const [peers, setPeers] = useState<string[]>([]);

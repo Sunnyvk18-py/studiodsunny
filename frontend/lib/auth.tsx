@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AuthUser, endpoints, setCsrfToken } from "./api";
+import { AuthUser, endpoints, setCsrfToken, setUnauthorizedHandler } from "./api";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -18,6 +18,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => router.replace("/login"));
+    return () => setUnauthorizedHandler(null);
+  }, [router]);
 
   useEffect(() => {
     endpoints

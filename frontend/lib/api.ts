@@ -15,6 +15,12 @@ const NO_REFRESH_PATHS = new Set([
 
 let csrfToken = "";
 let refreshInFlight: Promise<boolean> | null = null;
+/** App Router navigate — registered by AuthProvider so 401 is a soft client transition. */
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
 
 export function setCsrfToken(token: string | null | undefined) {
   if (token) csrfToken = token;
@@ -140,7 +146,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
       return data;
     }
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      window.location.href = "/login";
+      onUnauthorized?.();
     }
     throw new ApiError("Not authenticated", 401);
   }

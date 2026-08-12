@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, Badge, Button, Input, PageHeader, Select, Skeleton, Textarea, healthTone, priorityTone } from "@/components/ui";
+import { Avatar, Badge, Button, Input, PageHeader, Select, Skeleton, healthTone, priorityTone } from "@/components/ui";
 import { endpoints, Task } from "@/lib/api";
 import { prettyStatus } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,7 +15,6 @@ const TABS = ["Overview", "Tasks", "Docs", "Files", "Timeline", "Team", "Activit
 export default function ProjectWorkspace() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const qc = useQueryClient();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
   const project = useQuery({ queryKey: ["project", id], queryFn: () => endpoints.project(id) });
   const tasks = useQuery({ queryKey: ["tasks", id], queryFn: () => endpoints.tasks({ project_id: id }) });
