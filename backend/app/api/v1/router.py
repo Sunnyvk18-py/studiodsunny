@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     chat,
     clients,
     dashboard,
+    debug,
     desk,
     docs,
     employees,
@@ -44,3 +45,4 @@ api_router.include_router(files.router, prefix="/files", tags=["files"])
 api_router.include_router(audit.router, prefix="/audit", tags=["audit"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
+api_router.include_router(debug.router, prefix="/debug", tags=["debug"])

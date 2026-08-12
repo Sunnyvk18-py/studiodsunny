@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth";
 import { useUI } from "@/stores/ui";
-import { Building2, FolderKanban, Receipt, UserPlus, CheckSquare, CalendarPlus, Briefcase } from "lucide-react";
+import { Building2, FolderKanban, Receipt, UserPlus, CheckSquare } from "lucide-react";
 import Link from "next/link";
 
 const items = [
@@ -10,9 +10,7 @@ const items = [
   { href: "/clients/new", label: "Add Client", icon: Building2, perm: "clients:write" },
   { href: "/team?new=1", label: "Add Employee", icon: UserPlus, perm: "employees:write" },
   { href: "/tasks?new=1", label: "Create Task", icon: CheckSquare },
-  { href: "/leads", label: "Add Lead", icon: Briefcase, perm: "leads:write" },
   { href: "/finance", label: "Create Invoice", icon: Receipt, perm: "finance:write" },
-  { href: "/calendar", label: "Schedule Meeting", icon: CalendarPlus },
 ];
 
 export function QuickCreate() {
