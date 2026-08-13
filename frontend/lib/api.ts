@@ -181,12 +181,21 @@ export const endpoints = {
   logoutAll: () => api<{ message: string }>("/auth/logout-all", { method: "POST" }),
   dashboard: () => api<Dashboard>("/dashboard"),
   desk: () => api<Desk>("/desk"),
-  clients: (q?: string) => api<Client[]>("/clients" + (q ? `?q=${encodeURIComponent(q)}` : "")),
+  clients: (opts?: string | { q?: string; archived?: boolean }) => {
+    const params =
+      typeof opts === "string" ? { q: opts } : opts || {};
+    const sp = new URLSearchParams();
+    if (params.q) sp.set("q", params.q);
+    if (params.archived) sp.set("archived", "true");
+    const qs = sp.toString();
+    return api<Client[]>(`/clients${qs ? `?${qs}` : ""}`);
+  },
   client: (id: string) => api<Client>(`/clients/${id}`),
   createClient: (data: Partial<Client> & { business_name: string }) =>
     api<Client>("/clients", { method: "POST", body: JSON.stringify(data) }),
   updateClient: (id: string, data: Partial<Client>) =>
     api<Client>(`/clients/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  archiveClient: (id: string) => api<void>(`/clients/${id}/archive`, { method: "POST" }),
   projects: (params?: Record<string, string>) => {
     const qs = params ? "?" + new URLSearchParams(params).toString() : "";
     return api<Project[]>(`/projects${qs}`);
@@ -196,6 +205,7 @@ export const endpoints = {
     api<ProjectDetail>("/projects", { method: "POST", body: JSON.stringify(data) }),
   updateProject: (id: string, data: unknown) =>
     api<ProjectDetail>(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  archiveProject: (id: string) => api<void>(`/projects/${id}/archive`, { method: "POST" }),
   createMilestone: (projectId: string, data: unknown) =>
     api(`/projects/${projectId}/milestones`, { method: "POST", body: JSON.stringify(data) }),
   tasks: (params?: Record<string, string>) => {
@@ -205,10 +215,21 @@ export const endpoints = {
   createTask: (data: unknown) => api<Task>("/tasks", { method: "POST", body: JSON.stringify(data) }),
   updateTask: (id: string, data: unknown) =>
     api<Task>(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  employees: (q?: string) => api<Employee[]>("/employees" + (q ? `?q=${encodeURIComponent(q)}` : "")),
+  archiveTask: (id: string) => api<void>(`/tasks/${id}/archive`, { method: "POST" }),
+  employees: (opts?: string | { q?: string; archived?: boolean }) => {
+    const params = typeof opts === "string" ? { q: opts } : opts || {};
+    const sp = new URLSearchParams();
+    if (params.q) sp.set("q", params.q);
+    if (params.archived) sp.set("archived", "true");
+    const qs = sp.toString();
+    return api<Employee[]>(`/employees${qs ? `?${qs}` : ""}`);
+  },
   employee: (id: string) => api<Employee>(`/employees/${id}`),
   createEmployee: (data: unknown) =>
     api<Employee>("/employees", { method: "POST", body: JSON.stringify(data) }),
+  updateEmployee: (id: string, data: unknown) =>
+    api<Employee>(`/employees/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deactivateEmployee: (id: string) => api<void>(`/employees/${id}`, { method: "DELETE" }),
   inviteEmployee: (data: unknown) =>
     api<{ employee: Employee; invite_url: string; dev_note?: string }>("/employees/invite", {
       method: "POST",
@@ -424,6 +445,7 @@ export type Task = {
   project_name?: string | null;
   assignee_name?: string | null;
   reviewer_name?: string | null;
+  archived?: boolean;
 };
 
 export type AppNotification = {
@@ -468,6 +490,7 @@ export type Project = {
   team_count?: number;
   open_tasks?: number;
   blocked_tasks?: number;
+  archived?: boolean;
 };
 
 export type ProjectDetail = Project & {
@@ -512,6 +535,7 @@ export type Client = {
   created_at: string;
   active_projects?: number;
   pending_invoices?: number | string;
+  archived?: boolean;
 };
 
 export type Employee = {

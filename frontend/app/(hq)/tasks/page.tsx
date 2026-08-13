@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge, Button, Input, PageHeader, Select, Skeleton, priorityTone } from "@/components/ui";
 import { Task, endpoints } from "@/lib/api";
 import { prettyStatus } from "@/lib/utils";
@@ -35,14 +36,16 @@ function TasksInner() {
   const params = useSearchParams();
   const qc = useQueryClient();
   const [mine, setMine] = useState(false);
+  const [archived, setArchived] = useState(false);
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState("");
   const [assignee, setAssignee] = useState("");
   const [showNew, setShowNew] = useState(params.get("new") === "1");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<Task | null>(null);
   const [, startTransition] = useTransition();
 
-  const tasks = useQuery(tasksQuery(mine));
+  const tasks = useQuery(tasksQuery(mine, archived));
   const projects = useQuery({ queryKey: ["projects"], queryFn: () => endpoints.projects() });
   const people = useQuery({ queryKey: ["employees"], queryFn: () => endpoints.employees() });
   const [optimisticTasks, applyOptimistic] = useOptimistic(
@@ -86,6 +89,32 @@ function TasksInner() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const archive = useMutation({
+    mutationFn: (id: string) => endpoints.archiveTask(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["tasks"] });
+      const previous = qc.getQueriesData({ queryKey: ["tasks"] });
+      qc.setQueriesData({ queryKey: ["tasks"] }, (old: unknown) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((t: { id: string }) => t.id !== id);
+      });
+      return { previous };
+    },
+    onError: (e: Error, _id, ctx) => {
+      ctx?.previous?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error(e.message);
+    },
+    onSuccess: () => {
+      toast.success("Task archived");
+      setArchiveTarget(null);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["desk"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+
   const grouped = useMemo(() => {
     return COLUMNS.map((col) => ({ col, items: optimisticTasks.filter((t) => t.status === col) }));
   }, [optimisticTasks]);
@@ -121,15 +150,18 @@ function TasksInner() {
         description="Drag cards across columns. Status still updates optimistically."
         actions={
           <>
+            <Button variant={archived ? "primary" : "outline"} onClick={() => setArchived((v) => !v)}>
+              {archived ? "Showing archived" : "Archived"}
+            </Button>
             <Button variant={mine ? "primary" : "outline"} onClick={() => setMine((v) => !v)}>
               {mine ? "Showing mine" : "Assigned to me"}
             </Button>
-            <Button onClick={() => setShowNew((v) => !v)}>New task</Button>
+            {!archived ? <Button onClick={() => setShowNew((v) => !v)}>New task</Button> : null}
           </>
         }
       />
 
-      {showNew ? (
+      {showNew && !archived ? (
         <form
           className="panel mb-6 flex flex-wrap gap-2 p-4"
           onSubmit={(e) => {
@@ -163,6 +195,24 @@ function TasksInner() {
 
       {tasks.isLoading ? (
         <Skeleton className="h-64" />
+      ) : archived ? (
+        <div className="space-y-2">
+          {optimisticTasks.length === 0 ? (
+            <p className="text-[14px] text-muted">No archived tasks.</p>
+          ) : (
+            optimisticTasks.map((t) => (
+              <div key={t.id} className="panel flex items-center justify-between gap-3 p-3">
+                <div>
+                  <p className="text-[14px] font-medium">{t.title}</p>
+                  <p className="text-[12px] text-muted">
+                    {t.project_name || "No project"} · {prettyStatus(t.status)}
+                  </p>
+                </div>
+                <Badge tone="warn">Archived</Badge>
+              </div>
+            ))
+          )}
+        </div>
       ) : (
         <DndContext
           sensors={sensors}
@@ -173,7 +223,7 @@ function TasksInner() {
         >
           <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
             {grouped.map((g) => (
-              <TaskColumn key={g.col} col={g.col} items={g.items} onStatus={moveTask} />
+              <TaskColumn key={g.col} col={g.col} items={g.items} onStatus={moveTask} onArchive={setArchiveTarget} />
             ))}
           </div>
           <DragOverlay>
@@ -185,6 +235,16 @@ function TasksInner() {
           </DragOverlay>
         </DndContext>
       )}
+
+      <ConfirmDialog
+        open={Boolean(archiveTarget)}
+        title={archiveTarget ? `Archive ${archiveTarget.title}?` : "Archive task?"}
+        body="It will leave the board. You can find it again with the Archived filter."
+        confirmLabel="Archive"
+        loading={archive.isPending}
+        onCancel={() => setArchiveTarget(null)}
+        onConfirm={() => archiveTarget && archive.mutate(archiveTarget.id)}
+      />
     </div>
   );
 }
@@ -193,10 +253,12 @@ function TaskColumn({
   col,
   items,
   onStatus,
+  onArchive,
 }: {
   col: string;
   items: Task[];
   onStatus: (id: string, status: string) => void;
+  onArchive: (task: Task) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col });
 
@@ -212,7 +274,7 @@ function TaskColumn({
       <SortableContext items={items.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="scroll-thin max-h-[70vh] space-y-2 overflow-y-auto">
           {items.map((t) => (
-            <SortableTask key={t.id} task={t} onStatus={onStatus} />
+            <SortableTask key={t.id} task={t} onStatus={onStatus} onArchive={onArchive} />
           ))}
         </div>
       </SortableContext>
@@ -220,7 +282,15 @@ function TaskColumn({
   );
 }
 
-function SortableTask({ task, onStatus }: { task: Task; onStatus: (id: string, status: string) => void }) {
+function SortableTask({
+  task,
+  onStatus,
+  onArchive,
+}: {
+  task: Task;
+  onStatus: (id: string, status: string) => void;
+  onArchive: (task: Task) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -249,6 +319,17 @@ function SortableTask({ task, onStatus }: { task: Task; onStatus: (id: string, s
           </option>
         ))}
       </select>
+      <button
+        type="button"
+        className="mt-2 text-[11px] font-medium text-danger hover:underline"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onArchive(task);
+        }}
+      >
+        Archive
+      </button>
     </div>
   );
 }

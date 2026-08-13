@@ -60,3 +60,4 @@ class ClientOut(ORMModel):
     created_at: datetime
     active_projects: int = 0
     pending_invoices: Decimal | None = None
+    archived: bool = False

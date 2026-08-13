@@ -1010,7 +1010,14 @@ def test_archive_client_founder_pm_only():
 
     ok = founder.post(f"{PREFIX}/clients/{cid}/archive")
     assert ok.status_code == 204
-    assert founder.get(f"{PREFIX}/clients/{cid}").status_code == 404
+    # Soft-archive: detail stays readable for Archived filter / deep links
+    got = founder.get(f"{PREFIX}/clients/{cid}")
+    assert got.status_code == 200
+    assert got.json().get("archived") is True
+    active = founder.get(f"{PREFIX}/clients").json()
+    assert all(c["id"] != cid for c in active)
+    archived = founder.get(f"{PREFIX}/clients", params={"archived": "true"}).json()
+    assert any(c["id"] == cid for c in archived)
 
 
 def test_deactivate_employee_founder_only_revokes_sessions():

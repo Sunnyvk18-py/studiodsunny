@@ -24,7 +24,11 @@ function TeamInner() {
   const params = useSearchParams();
   const showNew = params.get("new") === "1" && can("employees:write");
   const [q, setQ] = useState("");
-  const people = useQuery({ queryKey: ["employees", q], queryFn: () => endpoints.employees(q || undefined) });
+  const [archived, setArchived] = useState(false);
+  const people = useQuery({
+    queryKey: ["employees", q, archived],
+    queryFn: () => endpoints.employees({ q: q || undefined, archived }),
+  });
 
   return (
     <div className="mx-auto max-w-[1200px]">
@@ -32,7 +36,14 @@ function TeamInner() {
         kicker="People"
         title="Team"
         description="Directory, capacity, and who can take the next brief."
-        actions={can("employees:write") ? <AddEmployeeForm /> : null}
+        actions={
+          <>
+            <Button variant={archived ? "primary" : "outline"} onClick={() => setArchived((v) => !v)}>
+              {archived ? "Showing deactivated" : "Deactivated"}
+            </Button>
+            {!archived && can("employees:write") ? <AddEmployeeForm /> : null}
+          </>
+        }
       />
 
       <input
@@ -50,6 +61,8 @@ function TeamInner() {
             <Skeleton key={i} className="h-44" />
           ))}
         </div>
+      ) : !(people.data || []).length ? (
+        <p className="text-[14px] text-muted">{archived ? "No deactivated people." : "No people yet."}</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {(people.data || []).map((e) => (
@@ -58,7 +71,11 @@ function TeamInner() {
                 <div className="flex items-center gap-3">
                   <span className="relative">
                     <Avatar name={e.display_name} size={40} />
-                    <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-raised ${e.availability === "busy" ? "bg-warn" : "bg-ok"}`} />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-raised ${
+                        e.availability === "busy" ? "bg-warn" : "bg-ok"
+                      }`}
+                    />
                   </span>
                   <div>
                     <p className="font-semibold">{e.display_name}</p>
@@ -67,7 +84,9 @@ function TeamInner() {
                     </p>
                   </div>
                 </div>
-                <Badge tone={e.availability === "busy" ? "warn" : "ok"}>{prettyStatus(e.availability)}</Badge>
+                <Badge tone={archived ? "warn" : e.availability === "busy" ? "warn" : "ok"}>
+                  {archived ? "Deactivated" : prettyStatus(e.availability)}
+                </Badge>
               </div>
               <p className="mt-4 text-[12px] text-muted">
                 {e.location || "—"} · {e.active_projects} active projects

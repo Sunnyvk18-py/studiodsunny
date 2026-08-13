@@ -13,11 +13,18 @@ export default function ProjectsPage() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
-  const query = useQuery({ queryKey: ["projects"], queryFn: () => endpoints.projects() });
+  const [archived, setArchived] = useState(false);
+  const query = useQuery({
+    queryKey: ["projects", archived],
+    queryFn: () => endpoints.projects(archived ? { archived: "true" } : undefined),
+  });
 
   const filtered = useMemo(() => {
     return (query.data || []).filter((p) => {
-      const matchQ = !q || p.name.toLowerCase().includes(q.toLowerCase()) || (p.client_name || "").toLowerCase().includes(q.toLowerCase());
+      const matchQ =
+        !q ||
+        p.name.toLowerCase().includes(q.toLowerCase()) ||
+        (p.client_name || "").toLowerCase().includes(q.toLowerCase());
       const matchS = !status || p.status === status;
       return matchQ && matchS;
     });
@@ -30,9 +37,16 @@ export default function ProjectsPage() {
         title="Projects"
         description="Every engagement Studio Sunny is running."
         actions={
-          <Link href="/projects/new">
-            <Button>New project</Button>
-          </Link>
+          <>
+            <Button variant={archived ? "primary" : "outline"} onClick={() => setArchived((v) => !v)}>
+              {archived ? "Showing archived" : "Archived"}
+            </Button>
+            {!archived ? (
+              <Link href="/projects/new">
+                <Button>New project</Button>
+              </Link>
+            ) : null}
+          </>
         }
       />
 
@@ -78,18 +92,24 @@ export default function ProjectsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title="No projects yet"
-          body="Create a client first, then open a project workspace."
+          title={archived ? "No archived projects" : "No projects yet"}
+          body={
+            archived
+              ? "Archived workspaces will show up here."
+              : "Create a client first, then open a project workspace."
+          }
           action={
-            <Link href="/projects/new">
-              <Button>Create project</Button>
-            </Link>
+            !archived ? (
+              <Link href="/projects/new">
+                <Button>Create project</Button>
+              </Link>
+            ) : undefined
           }
         />
       ) : view === "grid" ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((p) => (
-            <ProjectCard key={p.id} project={p} />
+            <ProjectCard key={p.id} project={p} archived={archived} />
           ))}
         </div>
       ) : (
@@ -114,7 +134,7 @@ export default function ProjectsPage() {
                   </td>
                   <td className="px-4 py-3 text-muted">{p.client_name}</td>
                   <td className="px-4 py-3">
-                    <Badge>{prettyStatus(p.status)}</Badge>
+                    <Badge tone={archived ? "warn" : "neutral"}>{archived ? "Archived" : prettyStatus(p.status)}</Badge>
                   </td>
                   <td className="px-4 py-3">
                     <Badge tone={healthTone(p.health)}>{prettyStatus(p.health)}</Badge>
@@ -137,7 +157,7 @@ export default function ProjectsPage() {
   );
 }
 
-function ProjectCard({ project: p }: { project: Project }) {
+function ProjectCard({ project: p, archived }: { project: Project; archived?: boolean }) {
   return (
     <Link href={`/projects/${p.id}`} className="panel lift block p-4">
       <div className="flex items-start gap-3">
@@ -145,7 +165,9 @@ function ProjectCard({ project: p }: { project: Project }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <p className="text-[14px] font-semibold text-ink">{p.name}</p>
-            <Badge tone={healthTone(p.health)}>{prettyStatus(p.health)}</Badge>
+            <Badge tone={archived ? "warn" : healthTone(p.health)}>
+              {archived ? "Archived" : prettyStatus(p.health)}
+            </Badge>
           </div>
           <p className="mt-0.5 text-[12px] text-muted">
             {p.client_name} · {p.project_type}

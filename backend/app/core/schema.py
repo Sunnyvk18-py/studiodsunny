@@ -72,15 +72,23 @@ def ensure_schema(engine) -> None:
                 # SQLite: BLOB; Postgres: BYTEA — SQLAlchemy LargeBinary maps both
                 conn.execute(text("ALTER TABLE documents ADD COLUMN yjs_state BLOB"))
 
+        dialect = engine.dialect.name
         for table in TENANT_TABLES:
             if table not in tables:
                 continue
             cols = {c["name"] for c in insp.get_columns(table)}
             if "org_id" not in cols:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN org_id VARCHAR(36)"))
-            conn.execute(
-                text(f"UPDATE {table} SET org_id = :oid WHERE org_id IS NULL OR org_id = ''"),
-                {"oid": org_id},
-            )
+            # Postgres UUID columns reject '' — only compare empty string on SQLite/text storage.
+            if dialect == "postgresql":
+                conn.execute(
+                    text(f"UPDATE {table} SET org_id = :oid WHERE org_id IS NULL"),
+                    {"oid": org_id},
+                )
+            else:
+                conn.execute(
+                    text(f"UPDATE {table} SET org_id = :oid WHERE org_id IS NULL OR org_id = ''"),
+                    {"oid": org_id},
+                )
 
     apply_rls(engine)

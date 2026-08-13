@@ -22,10 +22,15 @@ export const sendChatMutation = (slug: string) =>
     mutationFn: (body: string) => endpoints.sendChatMessage(slug, body),
   });
 
-export const tasksQuery = (mine = false) =>
+export const tasksQuery = (mine = false, archived = false) =>
   queryOptions({
-    queryKey: ["tasks", mine],
-    queryFn: () => endpoints.tasks(mine ? { mine: "true" } : undefined) as Promise<TaskList>,
+    queryKey: ["tasks", mine, archived],
+    queryFn: () => {
+      const params: Record<string, string> = {};
+      if (mine) params.mine = "true";
+      if (archived) params.archived = "true";
+      return endpoints.tasks(Object.keys(params).length ? params : undefined) as Promise<TaskList>;
+    },
   });
 
 export const updateTaskMutation = mutationOptions({
