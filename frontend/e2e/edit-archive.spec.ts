@@ -16,15 +16,15 @@ test("edit client name and archive it", async ({ page }) => {
   const edited = `${name} Edited`;
 
   await page.goto("/clients/new");
-  await page.locator('input').first().fill(name);
+  await page.getByLabel("Business name").fill(name);
   await page.getByRole("button", { name: /Create client/i }).click();
   await expect(page).toHaveURL(/\/clients\/[^/]+$/, { timeout: 20000 });
-  await expect(page.getByRole("heading", { name })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name })).toBeVisible({ timeout: 20000 });
 
   await page.getByRole("button", { name: "Edit" }).click();
   await page.locator("form.panel input").first().fill(edited);
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("heading", { name: edited })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole("heading", { level: 1, name: edited })).toBeVisible({ timeout: 15000 });
 
   await page.getByRole("button", { name: "Archive" }).click();
   await expect(page.getByRole("heading", { name: `Archive ${edited}?` })).toBeVisible();
