@@ -1,15 +1,16 @@
 "use client";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { TaskDetailDrawer } from "@/components/task-detail-drawer";
 import { Avatar, Badge, Button, Input, PageHeader, Select, Skeleton, Textarea, healthTone, priorityTone } from "@/components/ui";
 import { endpoints, Task } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { prettyStatus } from "@/lib/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 const TABS = ["Overview", "Tasks", "Docs", "Files", "Timeline", "Team", "Activity"] as const;
@@ -25,14 +26,25 @@ const PROJECT_STATUSES = [
   "paused",
 ];
 
-export default function ProjectWorkspace() {
+export default function ProjectWorkspacePage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-64" />}>
+      <ProjectWorkspace />
+    </Suspense>
+  );
+}
+
+function ProjectWorkspace() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const qc = useQueryClient();
   const { can } = useAuth();
   const canWrite = can("projects:write");
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Overview");
+  const openTaskId = searchParams.get("task");
+  const [tab, setTab] = useState<(typeof TABS)[number]>(openTaskId ? "Tasks" : "Overview");
   const [editing, setEditing] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [form, setForm] = useState({
@@ -45,6 +57,18 @@ export default function ProjectWorkspace() {
   const project = useQuery({ queryKey: ["project", id], queryFn: () => endpoints.project(id) });
   const tasks = useQuery({ queryKey: ["tasks", id], queryFn: () => endpoints.tasks({ project_id: id }) });
   const activity = useQuery({ queryKey: ["activity", id], queryFn: () => endpoints.activity(id) });
+
+  useEffect(() => {
+    if (openTaskId) setTab("Tasks");
+  }, [openTaskId]);
+
+  function setTaskParam(taskId: string | null) {
+    const sp = new URLSearchParams(searchParams.toString());
+    if (taskId) sp.set("task", taskId);
+    else sp.delete("task");
+    const qs = sp.toString();
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
 
   useEffect(() => {
     if (!project.data) return;
@@ -257,7 +281,7 @@ export default function ProjectWorkspace() {
       )}
 
       {tab === "Tasks" && (
-        <TasksPanel projectId={id} tasks={tasks.data || []} />
+        <TasksPanel projectId={id} tasks={tasks.data || []} onOpenTask={(taskId) => setTaskParam(taskId)} />
       )}
 
       {tab === "Docs" && <ProjectDocs projectId={id} />}
@@ -318,6 +342,8 @@ export default function ProjectWorkspace() {
         onCancel={() => setConfirmArchive(false)}
         onConfirm={() => archive.mutate()}
       />
+
+      {openTaskId ? <TaskDetailDrawer taskId={openTaskId} onClose={() => setTaskParam(null)} /> : null}
     </div>
   );
 }
@@ -509,7 +535,15 @@ function ProjectDocs({ projectId }: { projectId: string }) {
   );
 }
 
-function TasksPanel({ projectId, tasks }: { projectId: string; tasks: Task[] }) {
+function TasksPanel({
+  projectId,
+  tasks,
+  onOpenTask,
+}: {
+  projectId: string;
+  tasks: Task[];
+  onOpenTask: (taskId: string) => void;
+}) {
   const qc = useQueryClient();
   const people = useQuery({ queryKey: ["employees"], queryFn: () => endpoints.employees() });
   const [title, setTitle] = useState("");
@@ -590,7 +624,19 @@ function TasksPanel({ projectId, tasks }: { projectId: string; tasks: Task[] }) 
               {tasks
                 .filter((t) => t.status === col)
                 .map((t) => (
-                  <div key={t.id} className="panel lift p-3">
+                  <div
+                    key={t.id}
+                    className="panel lift cursor-pointer p-3"
+                    onClick={() => onOpenTask(t.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenTask(t.id);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
                     <p className="text-sm font-medium">{t.title}</p>
                     <p className="mt-1 text-[11px] text-muted">{t.assignee_name || "Unassigned"}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -599,6 +645,7 @@ function TasksPanel({ projectId, tasks }: { projectId: string; tasks: Task[] }) 
                     <select
                       className="mt-2 w-full rounded-lg border border-line bg-bg px-2 py-1 text-xs"
                       value={t.status}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => update.mutate({ id: t.id, status: e.target.value })}
                     >
                       {columns.map((s) => (
