@@ -28,6 +28,8 @@ python -m venv .venv
 pip install -r requirements.txt
 # Optional explicit migrate: alembic upgrade head
 python -m app.seed.seed
+# Empty HQ: founder only. To load mock demo data (tests): python -m app.seed.seed --reset --demo
+# To clear an existing DB first: python -m app.seed.seed --reset
 uvicorn app.main:app --reload --port 8000
 
 # 2. Frontend (new terminal)
@@ -36,7 +38,7 @@ npm install
 npm run dev
 ```
 
-Postgres is the default database (`DATABASE_URL` in `.env.example`). For a SQLite-only demo, set:
+Postgres is the default database (`DATABASE_URL` in `.env.example`). For a SQLite-only local DB, set:
 
 ```
 DATABASE_URL=sqlite:///./studio_sunny_hq.db
@@ -44,17 +46,9 @@ DATABASE_URL=sqlite:///./studio_sunny_hq.db
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Demo accounts
+### First login
 
-Password for all: `SunnyHQ2026!`
-
-| Email | Role |
-| --- | --- |
-| sunny@studiosunny.com | Founder |
-| arjun@studiosunny.com | Project Manager |
-| rahul@studiosunny.com | Developer |
-| priya@studiosunny.com | Designer |
-| kiran@studiosunny.com | Automation Engineer |
+After bootstrap: `sunny@studiosunny.com` / `SunnyHQ2026!` — then add real people and clients in HQ. Mock Muttonly/Patel data is opt-in via `--demo` only.
 
 ## PostgreSQL (optional)
 

@@ -20,8 +20,8 @@ function LoginInner() {
   const { user, loading, setUser } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("sunny@studiosunny.com");
-  const [password, setPassword] = useState("SunnyHQ2026!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [tempToken, setTempToken] = useState<string | null>(params.get("temp"));
   const [code, setCode] = useState("");

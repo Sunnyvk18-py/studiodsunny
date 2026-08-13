@@ -359,27 +359,81 @@ def ensure_org(db) -> Organization:
     return org
 
 
-def run() -> None:
+def _ensure_departments(db) -> dict[str, Department]:
+    return {
+        "founder": get_or_create_dept(db, "Founder", "founder", "Leadership"),
+        "ops": get_or_create_dept(db, "Operations", "operations", "Delivery and client operations"),
+        "eng": get_or_create_dept(db, "Engineering", "engineering", "Product and custom software"),
+        "design": get_or_create_dept(db, "Design", "design", "Brand, product, and UX"),
+        "auto": get_or_create_dept(db, "Automation", "automation", "AI, WhatsApp, and workflow systems"),
+        "sales": get_or_create_dept(db, "Sales", "sales", "New business and partnerships"),
+        "marketing": get_or_create_dept(db, "Marketing", "marketing", "SEO and growth"),
+        "finance": get_or_create_dept(db, "Finance", "finance", "Invoicing and commercial control"),
+    }
+
+
+def wipe() -> None:
+    """Drop all tables. Use before bootstrap to clear demo/mock rows from a prior seed."""
+    Base.metadata.drop_all(bind=engine)
+    print("Dropped all tables.")
+
+
+def bootstrap() -> None:
+    """Empty platform: org, departments, and founder login only — no demo clients/projects/people."""
     Base.metadata.create_all(bind=engine)
     ensure_schema(engine)
     db = SessionLocal()
     try:
         ensure_org(db)
+        depts = _ensure_departments(db)
         if db.scalar(select(User).where(User.email == "sunny@studiosunny.com")):
+            db.commit()
+            print("Bootstrap already applied. Login: sunny@studiosunny.com / SunnyHQ2026!")
+            return
+        create_person(
+            db,
+            email="sunny@studiosunny.com",
+            first="Sunny",
+            last="",
+            role="founder",
+            title="Founder",
+            dept=depts["founder"],
+            location="Hyderabad",
+            salary=0,
+            skills=["Leadership", "Product", "Sales"],
+            joining=date(2022, 1, 10),
+            superadmin=True,
+        )
+        db.commit()
+        print("Bootstrapped empty Studio Sunny HQ.")
+        print("Founder login: sunny@studiosunny.com / SunnyHQ2026!")
+    finally:
+        db.close()
+
+
+def run_demo() -> None:
+    """Full mock dataset for tests and local demos. Prefer bootstrap() for real use."""
+    Base.metadata.create_all(bind=engine)
+    ensure_schema(engine)
+    db = SessionLocal()
+    try:
+        ensure_org(db)
+        if db.scalar(select(User).where(User.email == "arjun@studiosunny.com")):
             ensure_chat(db)
             ensure_docs(db)
             ensure_files(db)
-            print("Seed already applied. Demo login: sunny@studiosunny.com / SunnyHQ2026!")
+            print("Demo seed already applied. Login: sunny@studiosunny.com / SunnyHQ2026!")
             return
 
-        founder_dept = get_or_create_dept(db, "Founder", "founder", "Leadership")
-        ops = get_or_create_dept(db, "Operations", "operations", "Delivery and client operations")
-        eng = get_or_create_dept(db, "Engineering", "engineering", "Product and custom software")
-        design = get_or_create_dept(db, "Design", "design", "Brand, product, and UX")
-        auto = get_or_create_dept(db, "Automation", "automation", "AI, WhatsApp, and workflow systems")
-        sales = get_or_create_dept(db, "Sales", "sales", "New business and partnerships")
-        marketing = get_or_create_dept(db, "Marketing", "marketing", "SEO and growth")
-        finance = get_or_create_dept(db, "Finance", "finance", "Invoicing and commercial control")
+        depts = _ensure_departments(db)
+        founder_dept = depts["founder"]
+        ops = depts["ops"]
+        eng = depts["eng"]
+        design = depts["design"]
+        auto = depts["auto"]
+        sales = depts["sales"]
+        marketing = depts["marketing"]
+        finance = depts["finance"]
 
         sunny, _ = create_person(
             db,
@@ -1043,7 +1097,7 @@ def run() -> None:
         ensure_chat(db)
         ensure_docs(db)
         ensure_files(db)
-        print("Seeded Studio Sunny HQ.")
+        print("Seeded Studio Sunny HQ demo data.")
         print("Demo accounts (password: SunnyHQ2026!):")
         print("  sunny@studiosunny.com          Founder")
         print("  arjun@studiosunny.com          Project Manager")
@@ -1054,5 +1108,29 @@ def run() -> None:
         db.close()
 
 
+def run() -> None:
+    """Default: empty platform bootstrap (no mock clients/projects/team)."""
+    bootstrap()
+
+
 if __name__ == "__main__":
-    run()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Studio Sunny HQ database seed")
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Load full mock dataset (tests / demos only)",
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Drop all tables first (clears prior demo data)",
+    )
+    args = parser.parse_args()
+    if args.reset:
+        wipe()
+    if args.demo:
+        run_demo()
+    else:
+        bootstrap()

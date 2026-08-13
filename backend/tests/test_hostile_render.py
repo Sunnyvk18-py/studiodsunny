@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.seed.seed import DEMO_PASSWORD, run as seed_run
+from app.seed.seed import DEMO_PASSWORD, run_demo as seed_run
 
 pytestmark = pytest.mark.hostile
 
