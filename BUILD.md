@@ -88,6 +88,7 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 python -m app.seed.seed
+# Empty platform (founder only). Mock dataset: python -m app.seed.seed --reset --demo
 uvicorn app.main:app --reload --port 8000
 
 # Frontend (second terminal)
@@ -103,17 +104,9 @@ docker compose up -d
 # then set DATABASE_URL in backend/.env and re-seed
 ```
 
-### Demo logins
+### First login
 
-Password for all: `SunnyHQ2026!`
-
-| Email | Role |
-| --- | --- |
-| `sunny@studiosunny.com` | Founder |
-| `arjun@studiosunny.com` | Project Manager |
-| `rahul@studiosunny.com` | Developer |
-| `priya@studiosunny.com` | Designer |
-| `kiran@studiosunny.com` | Automation Engineer |
+After bootstrap: `sunny@studiosunny.com` / `SunnyHQ2026!`. Add real team and clients in HQ. Full mock cast (Arjun/Rahul/… + Muttonly) is only via `--demo`.
 
 ---
 

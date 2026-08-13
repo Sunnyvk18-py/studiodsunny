@@ -15,7 +15,7 @@ import schemathesis
 from hypothesis import HealthCheck, settings as hsettings, seed as hseed
 
 from app.main import app
-from app.seed.seed import DEMO_PASSWORD, run as seed_run
+from app.seed.seed import DEMO_PASSWORD, run_demo as seed_run
 
 pytestmark = [pytest.mark.fuzz]
 

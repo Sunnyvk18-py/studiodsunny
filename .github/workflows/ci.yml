@@ -110,7 +110,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install -r requirements.txt
-          .venv/bin/python -m app.seed.seed
+          .venv/bin/python -m app.seed.seed --demo
       - name: Start API
         working-directory: backend
         run: |

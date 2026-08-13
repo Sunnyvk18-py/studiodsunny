@@ -114,7 +114,7 @@ function AddEmployeeForm() {
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [form, setForm] = useState({
     email: "",
-    password: "SunnyHQ2026!",
+    password: "",
     first_name: "",
     last_name: "",
     role_key: "developer",

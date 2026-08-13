@@ -12,7 +12,6 @@ export default function HelpPage() {
           <kbd className="rounded border border-line px-1.5 py-0.5 text-xs">Ctrl+K</kbd> opens the command palette.
         </p>
         <p>Start on Home or My Desk. Create a client, then a project, then tasks. Progress and notifications update from the live API.</p>
-        <p className="text-muted">Demo password for all seed accounts: SunnyHQ2026!</p>
       </div>
     </div>
   );
