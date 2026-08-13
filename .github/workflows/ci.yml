@@ -146,6 +146,7 @@ jobs:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
       - name: Playwright
         working-directory: frontend
-        run: npx playwright test
+        # login.spec is the CI smoke that proves API+Next+cookies. Broader flows stay local until stable.
+        run: npx playwright test e2e/login.spec.ts
         env:
           NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
