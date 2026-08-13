@@ -114,7 +114,7 @@ jobs:
         run: |
           .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:8000/api/v1/auth/providers >/dev/null; then
+            if curl -sf http://127.0.0.1:8000/health >/dev/null; then
               exit 0
             fi
             sleep 1
