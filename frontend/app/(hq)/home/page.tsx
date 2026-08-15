@@ -63,9 +63,7 @@ export default function HomePage() {
       ["/clients/new", "Add Client", "clients:write"],
       ["/team?new=1", "Add Employee", "employees:write"],
       ["/tasks?new=1", "Create Task", null],
-      ["/leads", "Add Lead", "leads:write"],
       ["/finance", "Create Invoice", "finance:write"],
-      ["/calendar", "Schedule Meeting", null],
       ["/desk", "My Desk", null],
     ] as const
   ).filter(([, , perm]) => !perm || can(perm));

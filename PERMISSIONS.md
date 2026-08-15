@@ -208,6 +208,7 @@ The Yjs endpoints are the easy miss — **a doc's read permission and its CRDT s
 | POST | `/api/v1/admin/templates` | founder, pm | 403 |
 | PATCH | `/api/v1/admin/templates/{id}` | founder, pm | 404 |
 | DELETE | `/api/v1/admin/templates/{id}` | founder | 404 |
+| GET | `/api/v1/debug/boom` | founder | 403 | Deliberate 500 for Sentry verification. Never enable anonymously. |
 
 `GET /admin/integrations` must never return secrets — API keys, tokens, webhook signing secrets. Return `"connected": true` and a masked hint (`sk-...4f2a`) only. Assert no value in the response matches anything in your secrets store.
 

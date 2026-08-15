@@ -97,6 +97,7 @@ DOCUMENTED_PATHS = {
     f"{PREFIX}/admin/integrations",
     f"{PREFIX}/admin/templates",
     f"{PREFIX}/admin/templates/{{id}}",
+    f"{PREFIX}/debug/boom",
 }
 
 
@@ -769,6 +770,17 @@ def test_integrations_no_raw_secrets_for_founder():
         assert "configured" in row
         for key in ("api_key", "secret", "token", "password", "dsn"):
             assert key not in row
+
+
+def test_debug_boom_founder_only():
+    denied = _client()
+    _login(denied, DEVELOPER)
+    assert denied.get(f"{PREFIX}/debug/boom").status_code == 403
+
+    founder = TestClient(app, raise_server_exceptions=False)
+    _login(founder, FOUNDER)
+    res = founder.get(f"{PREFIX}/debug/boom")
+    assert res.status_code == 500
 
 
 # --- Auth validation ---

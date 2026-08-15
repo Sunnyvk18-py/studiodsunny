@@ -91,6 +91,9 @@ def get_current_user(
     apply_tenant(db, tenant_id(user))
     org = db.get(Organization, tenant_id(user))
     set_permission_overrides(getattr(org, "permission_overrides", None) if org else None)
+    from app.core.observability import tag_request_role
+
+    tag_request_role(user.role_key)
     return user
 
 
